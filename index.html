@@ -363,7 +363,7 @@
       </table>
     </div>
   </div>
-  <footer>Day Shift window: first punch 7:30 AM–7:29 PM &middot; Night Shift window: first punch 7:30 PM–7:29 AM (next day) &middot; Hours &gt; 9 = Present &middot; Hours &lt; 5 = Half Day</footer>
+  <footer>Day Shift window: first punch 7:30 AM–7:29 PM &middot; Night Shift window: first punch 7:30 PM–12:00 PM next day &middot; Hours &gt; 9 = Present &middot; Hours &lt; 5 = Half Day</footer>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -480,10 +480,12 @@ function processRows(rows){
         windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate()+1, 0,0,0);
       } else if(mod >= NIGHT_START){
         shiftType = 'Night';
-        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate()+1, DAY_START_H, DAY_START_M, 0);
+        // Extended to 12:00 PM next day so late-morning checkouts (e.g. 8 AM, 9 AM) are
+        // captured in the same night session as the previous evening's first punch
+        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate()+1, 12, 0, 0);
       } else {
         shiftType = 'Night';
-        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), DAY_START_H, DAY_START_M, 0);
+        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), 12, 0, 0);
       }
       let j = i, last = first;
       while(j < arr.length && arr[j].dt < windowEnd){ last = arr[j]; j++; }
