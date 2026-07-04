@@ -258,6 +258,18 @@
   .pivot-legend{display:flex; gap:14px; padding:12px 14px; border-top:1px solid var(--border); flex-wrap:wrap; align-items:center;}
   .pivot-legend-item{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim);}
   .pivot-legend-dot{width:10px; height:10px; border-radius:3px;}
+
+  /* Employee table collapsible header */
+  .emp-table-header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 18px; background:var(--panel); border:1px solid var(--border);
+    border-radius:12px 12px 0 0; border-bottom:none; margin-top:16px;
+    flex-wrap:wrap; gap:10px;
+  }
+  #empTableBody.table-wrap{ border-radius:0 0 12px 12px; }
+  #empTableBody.hidden{ display:none; }
+  #empTableSection .emp-table-header{ border-radius:12px; margin-bottom:0; }
+  #empTableSection .emp-table-header.collapsed{ border-radius:12px; }
 </style>
 </head>
 <body>
@@ -386,32 +398,12 @@
       <div class="chart-scroll"><svg id="barChart"></svg></div>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Employee</th>
-            <th>Warehouse</th>
-            <th>Shift Date</th>
-            <th>Shift</th>
-            <th>First Punch</th>
-            <th>Last Punch</th>
-            <th>Punch Timeline</th>
-            <th>Hours</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-    <!-- ===== WAREHOUSE × DATE PIVOT TABLE ===== -->
+    <!-- ===== WAREHOUSE × DATE PIVOT TABLE (below chart) ===== -->
     <div class="pivot-section" id="pivotSection">
       <div class="pivot-header">
         <div>
           <div class="pivot-title">Warehouse-wise Date Attendance Summary</div>
-          <div class="pivot-sub">Total headcount per warehouse per date (respects active filters)</div>
+          <div class="pivot-sub">Total headcount per warehouse per date &middot; respects active filters</div>
         </div>
         <div class="pivot-controls">
           <select id="pivotMetric" onchange="renderPivot()">
@@ -440,6 +432,75 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== DEPARTMENT × DATE PIVOT TABLE ===== -->
+    <div class="pivot-section" id="deptPivotSection">
+      <div class="pivot-header">
+        <div>
+          <div class="pivot-title">Department-wise Date Attendance Summary</div>
+          <div class="pivot-sub">Total headcount per department per date &middot; respects active filters</div>
+        </div>
+        <div class="pivot-controls">
+          <select id="deptPivotMetric" onchange="renderDeptPivot()">
+            <option value="total">Total Attendance</option>
+            <option value="present">Present Only</option>
+            <option value="halfday">Half Day Only</option>
+            <option value="short">Short Hours Only</option>
+          </select>
+          <select id="deptPivotShift" onchange="renderDeptPivot()">
+            <option value="">Both Shifts</option>
+            <option value="Day">Day Shift</option>
+            <option value="Night">Night Shift</option>
+          </select>
+        </div>
+      </div>
+      <div class="pivot-wrap">
+        <div class="pivot-scroll">
+          <table class="pivot-table" id="deptPivotTable"></table>
+        </div>
+        <div class="pivot-legend">
+          <span style="font-size:11px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">Colour scale:</span>
+          <div class="pivot-legend-item"><div class="pivot-legend-dot" style="background:#1A3D2E;"></div>High</div>
+          <div class="pivot-legend-item"><div class="pivot-legend-dot" style="background:var(--present-dim);"></div>Medium</div>
+          <div class="pivot-legend-item"><div class="pivot-legend-dot" style="background:var(--halfday-dim);"></div>Low (1–3)</div>
+          <div class="pivot-legend-item"><div class="pivot-legend-dot" style="background:var(--panel-2);"></div>Zero</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== EMPLOYEE RAW DATA (collapsible) ===== -->
+    <div id="empTableSection">
+      <div class="emp-table-header">
+        <div>
+          <div style="font-family:'Space Grotesk'; font-size:15px; font-weight:700;">Employee Raw Data</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:3px;" id="empTableSub">All shift records</div>
+        </div>
+        <button class="btn" id="toggleEmpTable" onclick="toggleEmployeeTable()">
+          <svg id="toggleEmpIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 9l6 6 6-6"/></svg>
+          Hide Table
+        </button>
+      </div>
+      <div id="empTableBody" class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Warehouse</th>
+              <th>Shift Date</th>
+              <th>Shift</th>
+              <th>First Punch</th>
+              <th>Last Punch</th>
+              <th>Punch Timeline</th>
+              <th>Hours</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
 
   <footer>Day Shift window: first punch 7:30 AM–7:29 PM &middot; Night Shift window: first punch 7:30 PM–12:00 PM next day &middot; Hours &gt; 9 = Present &middot; Hours &lt; 5 = Half Day</footer>
 </div>
@@ -697,6 +758,7 @@ function render(){
   el('statDay').textContent     = filtered.filter(s=>s.shiftType==='Day').length;
   el('statNight').textContent   = filtered.filter(s=>s.shiftType==='Night').length;
   el('filterCount').textContent = `${filtered.length} of ${rawRecords.length} records`;
+  if(el('empTableSub')) el('empTableSub').textContent = `${filtered.length} shift records`;
 
   // Warehouse active banner
   const banner = el('whBanner');
@@ -742,6 +804,7 @@ function render(){
     </tr>`;
   }).join('');
   renderPivot();
+  renderDeptPivot();
 }
 
 /* Clear-warehouse banner button */
@@ -998,6 +1061,88 @@ function renderPivot(){
   html += '</tbody>';
 
   el('pivotTable').innerHTML = html;
+}
+
+
+/* ---------- TOGGLE EMPLOYEE TABLE ---------- */
+let empTableVisible = true;
+function toggleEmployeeTable(){
+  empTableVisible = !empTableVisible;
+  const body = document.getElementById('empTableBody');
+  const icon = document.getElementById('toggleEmpIcon');
+  const btn  = document.getElementById('toggleEmpTable');
+  const hdr  = document.querySelector('.emp-table-header');
+  if(empTableVisible){
+    body.classList.remove('hidden');
+    btn.innerHTML = '<svg id="toggleEmpIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 9l6 6 6-6"/></svg> Hide Table';
+    hdr.style.borderRadius = '12px 12px 0 0';
+    hdr.style.borderBottom = 'none';
+    body.style.borderRadius = '0 0 12px 12px';
+  } else {
+    body.classList.add('hidden');
+    btn.innerHTML = '<svg id="toggleEmpIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 15l6-6 6 6"/></svg> Show Table';
+    hdr.style.borderRadius = '12px';
+    hdr.style.borderBottom = '1px solid var(--border)';
+  }
+}
+
+/* ---------- DEPARTMENT × DATE PIVOT ---------- */
+function renderDeptPivot(){
+  const metric = (document.getElementById('deptPivotMetric')||{}).value || 'total';
+  const shiftF = (document.getElementById('deptPivotShift')||{}).value || '';
+  const tableEl = document.getElementById('deptPivotTable');
+  if(!tableEl) return;
+
+  let data = currentFiltered.length ? currentFiltered : rawRecords;
+  if(shiftF) data = data.filter(s => s.shiftType === shiftF);
+
+  if(!data.length){
+    tableEl.innerHTML = '<tr><td style="padding:30px;color:var(--text-dim);text-align:center;">No data available.</td></tr>';
+    return;
+  }
+
+  const rowKeyFn = s => (s.department && s.department.trim()) ? s.department.trim() : 'Unassigned';
+
+  const rowSet = new Set(), dateSet = new Set();
+  data.forEach(s=>{ rowSet.add(rowKeyFn(s)); dateSet.add(s.shiftDate); });
+  const rows = [...rowSet].sort();
+  const dates = [...dateSet].sort();
+
+  const pivot = {};
+  rows.forEach(r=>{ pivot[r]={}; dates.forEach(d=>{ pivot[r][d]=0; }); });
+  data.forEach(s=>{
+    const r=rowKeyFn(s), d=s.shiftDate;
+    if(metric==='present' && s.status!=='Present') return;
+    if(metric==='halfday' && s.status!=='Half Day') return;
+    if(metric==='short' && s.status!=='Short Hours') return;
+    pivot[r][d]=(pivot[r][d]||0)+1;
+  });
+
+  const dateTotals={};
+  dates.forEach(d=>{ dateTotals[d]=rows.reduce((sum,r)=>sum+(pivot[r][d]||0),0); });
+  const rowTotals={};
+  rows.forEach(r=>{ rowTotals[r]=dates.reduce((sum,d)=>sum+(pivot[r][d]||0),0); });
+  const grandTotal=rows.reduce((sum,r)=>sum+rowTotals[r],0);
+
+  const allVals=rows.flatMap(r=>dates.map(d=>pivot[r][d]||0)).filter(v=>v>0);
+  const maxVal=allVals.length?Math.max(...allVals):1;
+  function cellClass(v){ if(v===0)return'zero'; const p=v/maxVal; if(p>=0.66)return'high'; if(p>=0.33)return'med'; return'low'; }
+  function fmtColDate(iso){ const[y,m,d]=iso.split('-'); const mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]; return `${d}<br><span style="font-size:9px;font-weight:500;color:var(--text-faint)">${mon}</span>`; }
+
+  let html='<thead><tr><th class="pivot-wh">Department</th>';
+  dates.forEach(d=>{ html+=`<th>${fmtColDate(d)}</th>`; });
+  html+='<th style="background:rgba(91,127,255,0.12);color:var(--night);">Total</th></tr></thead><tbody>';
+
+  rows.forEach(r=>{
+    html+=`<tr><td class="pivot-wh">${r}</td>`;
+    dates.forEach(d=>{ const v=pivot[r][d]||0; const cls=cellClass(v); html+=`<td><span class="pivot-cell ${v>0?cls:'zero'}">${v>0?v:'—'}</span></td>`; });
+    html+=`<td class="pivot-total-col"><span class="pivot-cell has-data">${rowTotals[r]}</span></td></tr>`;
+  });
+
+  html+='<tr class="pivot-total-row"><td class="pivot-wh">Grand Total</td>';
+  dates.forEach(d=>{ const v=dateTotals[d]||0; html+=`<td><span class="pivot-cell ${v>0?'has-data':'zero'}">${v>0?v:'—'}</span></td>`; });
+  html+=`<td class="pivot-total-col"><span class="pivot-cell has-data">${grandTotal}</span></td></tr></tbody>`;
+  tableEl.innerHTML=html;
 }
 
 /* ---------- INIT ---------- */
