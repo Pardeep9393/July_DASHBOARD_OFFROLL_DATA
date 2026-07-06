@@ -502,7 +502,7 @@
 
   </div>
 
-  <footer>Day Shift window: first punch 7:30 AM–7:29 PM, session closes 8:40 PM &middot; Night Shift window: first punch 7:30 PM–12:00 PM next day &middot; Hours &gt; 9 = Present &middot; Hours &lt; 5 = Half Day</footer>
+  <footer>Day Shift window: first punch 7:30 AM–11:59 AM, session closes 8:45 PM &middot; Night Shift window: first punch 7:30 PM–11:00 PM next day &middot; Hours &gt; 9 = Present &middot; Hours &lt; 5 = Half Day</footer>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -582,14 +582,13 @@ function fmtTime(d){
 function minutesOfDay(d){return d.getHours()*60 + d.getMinutes();}
 const DAY_START = 7*60+30;
 const DAY_START_H = 7, DAY_START_M = 30;
+const DAY_END = 12*60; // first punch must be before 12:00 PM (i.e. up to 11:59 AM) to count as Day
 const NIGHT_START = 19*60+30;
-// A Day session can only stay "open" (accepting more punches) until 8:30 PM.
+// A Day session can only stay "open" (accepting more punches) until 8:45 PM.
 // Any punch after this cutoff is NOT merged into the day session anymore —
-// it becomes the start of a brand-new session, which is correctly classified
-// as Night (since its own time is >= NIGHT_START) and then linked forward to
-// the next morning's checkout. This prevents a night punch from being
-// swallowed as the "last punch" of an earlier day shift.
-const DAY_SESSION_CUTOFF = 20*60+30; // 8:30 PM
+// it becomes the start of a brand-new session instead. This prevents a
+// later punch from being swallowed as the "last punch" of an earlier day shift.
+const DAY_SESSION_CUTOFF = 20*60+45; // 8:45 PM
 
 /* ---------- CORE PROCESSING ---------- */
 function processRows(rows){
@@ -621,20 +620,26 @@ function processRows(rows){
       const first = arr[i];
       const mod = minutesOfDay(first.dt);
       let shiftType = null, windowEnd = null;
-      if(mod >= DAY_START && mod < NIGHT_START){
+      if(mod >= DAY_START && mod < DAY_END){
         shiftType = 'Day';
-        // Window closes at 8:40 PM instead of midnight. A punch after 8:40 PM
-        // will NOT be pulled into this day session — it starts its own
-        // (correctly-classified Night) session instead.
-        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), 20, 40, 0);
+        // First punch must land between 7:30 AM and 11:59 AM to count as Day.
+        // Window then stays open (collecting more punches) until 8:45 PM. A
+        // punch after 8:45 PM is NOT pulled into this day session — it starts
+        // its own new session instead.
+        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), 20, 45, 0);
       } else if(mod >= NIGHT_START){
         shiftType = 'Night';
-        // Extended to 12:00 PM next day so late-morning checkouts (e.g. 8 AM, 9 AM) are
-        // captured in the same night session as the previous evening's first punch
-        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate()+1, 12, 0, 0);
+        // First punch from 7:30 PM. Window stays open until 11:00 PM the
+        // next day so late checkouts are captured in the same night session
+        // as the previous evening's first punch.
+        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate()+1, 23, 0, 0);
       } else {
+        // Catches first punches outside both defined windows (e.g. before
+        // 7:30 AM, or in the 12:00 PM–7:29 PM gap that is neither Day nor
+        // Night per the current rules). Treated as Night, closing the same
+        // day at 11:00 PM.
         shiftType = 'Night';
-        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), 12, 0, 0);
+        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), 23, 0, 0);
       }
       let j = i, last = first;
       while(j < arr.length && arr[j].dt < windowEnd){ last = arr[j]; j++; }
