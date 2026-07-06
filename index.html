@@ -502,7 +502,7 @@
 
   </div>
 
-  <footer>Day Shift window: first punch 7:30 AM–7:29 PM, session closes 8:30 PM &middot; Night Shift window: first punch 7:30 PM–12:00 PM next day &middot; Hours &gt; 9 = Present &middot; Hours &lt; 5 = Half Day</footer>
+  <footer>Day Shift window: first punch 7:30 AM–7:29 PM, session closes 8:40 PM &middot; Night Shift window: first punch 7:30 PM–12:00 PM next day &middot; Hours &gt; 9 = Present &middot; Hours &lt; 5 = Half Day</footer>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -623,10 +623,10 @@ function processRows(rows){
       let shiftType = null, windowEnd = null;
       if(mod >= DAY_START && mod < NIGHT_START){
         shiftType = 'Day';
-        // Window closes at 8:30 PM instead of midnight. A punch after 8:30 PM
+        // Window closes at 8:40 PM instead of midnight. A punch after 8:40 PM
         // will NOT be pulled into this day session — it starts its own
         // (correctly-classified Night) session instead.
-        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), 20, 30, 0);
+        windowEnd = new Date(first.dt.getFullYear(), first.dt.getMonth(), first.dt.getDate(), 20, 40, 0);
       } else if(mod >= NIGHT_START){
         shiftType = 'Night';
         // Extended to 12:00 PM next day so late-morning checkouts (e.g. 8 AM, 9 AM) are
